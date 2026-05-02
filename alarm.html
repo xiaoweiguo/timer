@@ -1,3 +1,548 @@
-<html>
-  hi
-  </html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>智能倒计时器 | 自动循环 + 提示音</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none; /* 避免按钮文字被选中，提升操作感 */
+        }
+
+        body {
+            background: linear-gradient(145deg, #1a2a3a 0%, #0f1a24 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Poppins', 'Roboto', system-ui, -apple-system, 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* 主卡片 */
+        .timer-card {
+            background: rgba(22, 34, 48, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 64px;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+            padding: 2rem 2rem 2.5rem;
+            width: 100%;
+            max-width: 600px;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* 时间显示器 */
+        .time-display {
+            background: #0b1219;
+            border-radius: 72px;
+            padding: 0.6rem 0.8rem;
+            margin-bottom: 2rem;
+            box-shadow: inset 0 5px 12px rgba(0, 0, 0, 0.5), 0 6px 12px rgba(0, 0, 0, 0.2);
+            border: 1px solid #2c3e44;
+        }
+
+        #timer {
+            font-size: clamp(3.5rem, 15vw, 7rem);
+            font-weight: 800;
+            font-family: 'Fira Mono', 'JetBrains Mono', monospace;
+            text-align: center;
+            letter-spacing: 6px;
+            color: #e3f2fd;
+            background: linear-gradient(135deg, #eef9ff, #c4e2ff);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            word-break: break-word;
+        }
+
+        /* 时间微调区域 +/- 1分钟 */
+        .adjust-panel {
+            display: flex;
+            justify-content: center;
+            gap: 1.8rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .adj-btn {
+            background: #1e2f3c;
+            border: none;
+            font-size: 2rem;
+            font-weight: bold;
+            width: 70px;
+            height: 70px;
+            border-radius: 60px;
+            color: white;
+            cursor: pointer;
+            transition: 0.15s linear;
+            box-shadow: 0 6px 0 #0a1219;
+            font-family: monospace;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            background: #2a3f4b;
+        }
+
+        .adj-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #0a1219;
+        }
+
+        .adj-btn span {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        /* 主控制按钮组 */
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1.2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .ctrl-btn {
+            background: #263b44;
+            border: none;
+            font-size: 1.25rem;
+            font-weight: 600;
+            padding: 12px 28px;
+            border-radius: 50px;
+            color: #f0fcff;
+            cursor: pointer;
+            transition: all 0.15s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            font-family: inherit;
+            letter-spacing: 1px;
+            backdrop-filter: blur(4px);
+        }
+
+        .ctrl-btn:active {
+            transform: scale(0.96);
+        }
+
+        .reset-btn {
+            background: #2c484e;
+            border-bottom: 3px solid #4e7b86;
+        }
+
+        .start-btn {
+            background: #1e6b5e;
+            border-bottom: 3px solid #2baa96;
+            box-shadow: 0 4px 12px rgba(0, 180, 140, 0.3);
+        }
+
+        .pause-btn {
+            background: #5d3a1a;
+            border-bottom: 3px solid #b87c2e;
+        }
+
+        /* 状态辅助信息 */
+        .status-area {
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+            gap: 1rem;
+            font-size: 0.9rem;
+            background: #0b1820b3;
+            border-radius: 60px;
+            padding: 10px 18px;
+            width: fit-content;
+            margin: 0 auto 0.5rem auto;
+            color: #bdd4de;
+        }
+
+        .auto-badge {
+            background: #1e5f48;
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-weight: 500;
+            font-size: 0.8rem;
+            color: #c6ffea;
+        }
+
+        .mode-tip {
+            font-weight: 400;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.7rem;
+            color: #6c8d9c;
+            margin-top: 1.8rem;
+        }
+
+        @media (max-width: 480px) {
+            .timer-card {
+                padding: 1.5rem;
+            }
+            .adj-btn {
+                width: 58px;
+                height: 58px;
+                font-size: 1.6rem;
+            }
+            .ctrl-btn {
+                padding: 8px 18px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="timer-card">
+    <div class="time-display">
+        <div id="timer">10:00</div>
+    </div>
+
+    <div class="adjust-panel">
+        <button class="adj-btn" id="minusBtn" aria-label="">–</button>
+        <button class="adj-btn" id="plusBtn" aria-label="">+</button>
+    </div>
+
+    <div class="action-buttons">
+        <button class="ctrl-btn start-btn" id="startBtn">▶ Start</button>
+        <button class="ctrl-btn pause-btn" id="pauseBtn">⏸ Pause</button>
+        <button class="ctrl-btn reset-btn" id="resetBtn">⟳ Reset</button>
+    </div>
+
+    <div class="volume-control" style="display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 16px;">
+        <span>🔊 Volume</span>
+        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.80">
+        <span id="volumeValue">80%</span>
+    </div>
+    
+</div>
+
+<script>
+    (function() {
+        // ---------- DOM 元素 ----------
+        const timerElement = document.getElementById('timer');
+        const minusBtn = document.getElementById('minusBtn');
+        const plusBtn = document.getElementById('plusBtn');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // ---------- 核心变量 ----------
+        let currentTotalSeconds = 600;    // 当前剩余秒数 (默认10分钟 = 600秒)
+        let initialMinutes = 10;           // 基准初始分钟 (用户调整后的默认值)
+        let timerInterval = null;           // setInterval 句柄
+        let isRunning = false;              // 倒计时是否活跃
+        let globalVolume = 0.80; 
+
+        // 音频上下文 & 声音 (Web Audio 生成 “叮咚” 或者使用标准 Audio)
+        // 为了兼容性, 既不依赖外部文件, 又确保有声音, 使用 Web Audio 合成一个清脆的“叮咚”双音效.
+        let audioCtx = null;
+        
+        // 预初始化音频上下文 (为了遵循浏览器策略, 第一次点击需要用户交互后才能播放声音)
+        // 但我们设计: 倒计时结束时尝试播放声音. 如果audioCtx未初始化且未解锁, 会静默失败, 再增加一个“用户首次交互解锁音频”机制.
+        // 更可靠: 在任意按钮点击时提前解锁 AudioContext. 尽量保证结束时有声音.
+        function initAudioContext() {
+            if (audioCtx) return audioCtx;
+            try {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+                // 挂起状态, 等用户第一次交互后恢复
+                return audioCtx;
+            } catch(e) {
+                console.warn("Web Audio API not supported");
+                return null;
+            }
+        }
+        
+        // 播放 "叮咚" 提示音 (两个短促和弦音: ding + dong)
+        function playDingDong() {
+            // 若音频上下文未初始化则尝试初始化
+            let context = audioCtx;
+            if (!context) {
+                context = initAudioContext();
+                if (!context) return;
+            }
+            // 确保音频上下文是激活状态 (用户已经与页面交互过)
+            if (context.state === 'suspended') {
+                // 尝试恢复 (可能被浏览器策略限制, 但会静默失败)
+                context.resume().then(() => {
+                    playBeepInternal(context);
+                }).catch(e => console.log("音频未自动激活, 需要用户点击界面"));
+                return;
+            }
+            playBeepInternal(context);
+        }
+        
+        function playBeepInternal(context) {
+            if (!context) return;
+            const now = context.currentTime;
+
+
+            // 增益主控
+            const masterGain = context.createGain();
+            masterGain.gain.value = globalVolume;
+            masterGain.connect(context.destination);
+            
+            
+            // 第一个声音: 短 "叮" (正弦波, 较高频率 880Hz)
+            const osc1 = context.createOscillator();
+            const gain1 = context.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.value = 890;
+            gain1.gain.value = 0.9;
+            osc1.connect(gain1);
+            gain1.connect(masterGain);
+            gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+            osc1.start(now);
+            osc1.stop(now + 0.25);
+            
+            // 第二个声音: 柔和 "咚" (430Hz, 带一点衰减)
+            const osc2 = context.createOscillator();
+            const gain2 = context.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.value = 540;
+            gain2.gain.value = 0.85;
+            osc2.connect(gain2);
+            gain2.connect(masterGain);
+            gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+            osc2.start(now + 0.18);
+            osc2.stop(now + 0.48);
+            
+            // 简单短促铃音感觉
+            // 再加一个高频谐波 1240Hz 快速点缀 (增加叮咚感)
+            const osc3 = context.createOscillator();
+            const gain3 = context.createGain();
+            osc3.type = 'triangle';
+            osc3.frequency.value = 1280;
+            gain3.gain.value = 0.6;
+            osc3.connect(gain3);
+            gain3.connect(masterGain);
+            gain3.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+            osc3.start(now + 0.02);
+            osc3.stop(now + 0.22);
+        }
+        
+        // 尝试解锁音频 (在页面任何交互时调用, 提高声音播放成功率)
+        function unlockAudioOnUserInteraction() {
+            const ctx = audioCtx || initAudioContext();
+            if (ctx && ctx.state === 'suspended') {
+                ctx.resume().catch(e => {});
+            }
+        }
+        
+        // 绑定全局一次性用户交互解锁 (按钮皆有交互, 所以每次点击都可以尝试唤醒)
+        // 添加一些交互事件监听, 提高音频可用性
+        function bindAudioUnlock() {
+            const events = ['click', 'touchstart'];
+            const handler = () => {
+                unlockAudioOnUserInteraction();
+            };
+            events.forEach(ev => {
+                document.body.addEventListener(ev, handler, { once: false });
+                // 但为了不太频繁, 但还是无所谓, 每次点击都会尝试恢复.
+            });
+            // 主动将当前按钮也挂载同样逻辑, 但其实上面已经覆盖所有.
+        }
+        bindAudioUnlock();
+        
+        // ---------- 辅助方法: 更新显示时间 (格式 mm:ss) ----------
+        function updateDisplay() {
+            if (currentTotalSeconds < 0) currentTotalSeconds = 0;
+            const mins = Math.floor(currentTotalSeconds / 60);
+            const secs = currentTotalSeconds % 60;
+            timerElement.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        // 停止计时器 (清除interval, 修改运行标志)
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            isRunning = false;
+        }
+        
+        // 启动倒计时核心 (必须在当前总秒数 > 0 时调用; 若为0将会触发结束逻辑)
+        function startCountdown() {
+            if (isRunning) return; // 已在运行
+            if (timerInterval) stopTimer();
+            
+            // 边界: 如果当前剩余时间 <= 0，则触发结束并重启 (自动)
+            if (currentTotalSeconds <= 0) {
+                // 此时特殊: 直接触发完成逻辑 (会重新开始)
+                handleTimerComplete();
+                return;
+            }
+            
+            isRunning = true;
+            timerInterval = setInterval(() => {
+                if (!isRunning) return; // 安全防护
+                
+                if (currentTotalSeconds <= 0) {
+                    // 倒计时归零, 清除interval, 处理完成
+                    stopTimer();        // 停止内部计时, 并将isRunning置false
+                    handleTimerComplete();
+                } else {
+                    currentTotalSeconds--;
+                    updateDisplay();
+                }
+            }, 1000);
+        }
+        
+        // 倒计时完成后的逻辑: 播放提示音 + 重置为初始时长 (基于设定的初始分钟) + 自动重新开始倒计时
+        function handleTimerComplete() {
+            // 确保当前剩余秒数已经为0，显示0:00
+            if (currentTotalSeconds !== 0) {
+                currentTotalSeconds = 0;
+                updateDisplay();
+            }
+            
+            // 1. 播放 叮咚 提示音
+            playDingDong();
+            
+            // 2. 重新设置总时长 = 初始分钟对应秒数 (用户调整后的基准)
+            const newInitialSeconds = initialMinutes * 60;
+            currentTotalSeconds = newInitialSeconds;
+            updateDisplay();
+            
+            // 3. 自动开始新的一轮倒计时 (前提是当前没有运行任何计时器)
+            //   确保暂停/停止等状态清理后重新开始.
+            if (isRunning) {
+                // 理论上倒计时结束时isRunning已被stopTimer清理为false, 但保险再停一下
+                stopTimer();
+            }
+            // 重新启动刚设置好的时间
+            startCountdown();
+        }
+        
+        // 重置功能: 停止计时, 将剩余时间重置为初始分钟对应的秒数, 更新显示, 不自动开始.
+        function resetTimer() {
+            stopTimer();
+            currentTotalSeconds = initialMinutes * 60;
+            updateDisplay();
+
+        }
+        
+        // 修改基准时长 (增/减1分钟), 并同步剩余时长 (如果有重置预期: 一般用户希望调节时间后当前剩余时长也跟着变化)
+        // 遵循直觉: 点 + 或者 - 的时候, 将初始分钟数变更，并且如果倒计时未运行时直接改变显示时长。
+        // 如果倒计时正在运行呢？很多计时器会允许动态调整剩余时间，但为了体验，调整时间时改变“基准时间”同时改变剩余时间，并同步显示。
+        // 但是必须小心: 若倒计时进行中修改剩余秒数会干扰预期。但设计为: 点 + 或 - 的时候，增加/减少初始分钟值，
+        // 同时 currentTotalSeconds 同步增加或减少60秒 (但不能小于0)
+        function adjustMinutes(delta) {
+            let newMinutes = initialMinutes + delta;
+            if (newMinutes < 0) newMinutes = 0;
+            if (newMinutes > 99) newMinutes = 99;   // 最大99分钟避免界面溢出
+            initialMinutes = newMinutes;
+            
+            const newSecs = initialMinutes * 60;
+            if (!isRunning) {
+                // 倒计时未运行时, 直接改变当前剩余时间
+                currentTotalSeconds = newSecs;
+                updateDisplay();
+            } else {
+                // 倒计时运行中: 也同步更新剩余时间 (用户主动调整剩余时间)
+                // 同样不能低于0, 但如果新值小于当前剩余? 用户明确增/减分钟就重新设定上下限
+                // 为了体验平滑, 直接修改currentTotalSeconds 并且不能低于0。
+                let updatedSeconds = currentTotalSeconds + (delta * 60);
+                if (updatedSeconds < 0) updatedSeconds = 0;
+                // 如果调整后的剩余时间上限过大也不限制，但保持友好
+                currentTotalSeconds = updatedSeconds;
+                updateDisplay();
+                // 额外边界：如果当前剩余时间变为0并且倒计时还在运行, 那么下一个tick跳零结束, 也可以触发自动重置, 但为了避免滞后立刻检查一下
+                if (currentTotalSeconds <= 0 && isRunning) {
+                    // 立即触达零点, 强制触发完成
+                    stopTimer();
+                    handleTimerComplete();
+                }
+            }
+        }
+        
+        // 专门用于暂停
+        function pauseTimer() {
+            if (isRunning) {
+                stopTimer();  // 停止计时器且将 isRunning 置 false
+            }
+        }
+        
+        // 开始 (如果已经运行则忽略，如果暂停则继续, 如果剩余时间是0则调用重置? 开始逻辑: 当前剩余时间若为0应该看作重新开始完整周期)
+        function startTimer() {
+            if (isRunning) return;
+            // 如果当前剩余时间 <= 0 秒，重置到初始值再启动
+            if (currentTotalSeconds <= 0) {
+                // 重置为初始分钟对应秒数
+                currentTotalSeconds = initialMinutes * 60;
+                updateDisplay();
+            }
+            startCountdown();
+        }
+        
+        // 重置并停止 (重置按钮风格)
+        function handleReset() {
+            pauseTimer();      // 停止倒计时
+            currentTotalSeconds = initialMinutes * 60;
+            updateDisplay();
+
+        }
+        
+        // 额外辅助: 当增大/减小可能导致超过范围, 进行约束 (但前面已做)
+        // 同时为了体验，当用户重置后想要开始新计时，全部正常
+        
+        // ----- 界面事件绑定 -----
+        // 增加一分钟
+        plusBtn.addEventListener('click', () => {
+            adjustMinutes(1);
+            unlockAudioOnUserInteraction(); // 顺便唤醒音频
+        });
+        minusBtn.addEventListener('click', () => {
+            adjustMinutes(-1);
+            unlockAudioOnUserInteraction();
+        });
+        startBtn.addEventListener('click', () => {
+            startTimer();
+            unlockAudioOnUserInteraction();
+        });
+        pauseBtn.addEventListener('click', () => {
+            pauseTimer();
+            unlockAudioOnUserInteraction();
+        });
+        resetBtn.addEventListener('click', () => {
+            handleReset();
+            unlockAudioOnUserInteraction();
+        });
+        
+        // 额外保证每次DOM加载后显示正确时间并设置初始值
+        function init() {
+            initialMinutes = 10;
+            currentTotalSeconds = 600;
+            updateDisplay();
+            // 确保音频预创建但不自动播放
+            initAudioContext();
+            // 默认没有运行
+            isRunning = false;
+            timerInterval = null;
+
+            const volumeSlider = document.getElementById('volumeSlider');
+            const volumeValue = document.getElementById('volumeValue');
+
+            if (volumeSlider) {
+                volumeSlider.addEventListener('input', (e) => {
+                    globalVolume = parseFloat(e.target.value);
+                    volumeValue.innerText = Math.round(globalVolume * 100) + '%';
+                });
+            }
+
+        }
+        
+        init();
+        
+        // 提供一个额外安全保障: 页面可见性变化时如果倒计时运行，不需要额外处理，因为setInterval会继续，但为了精度，不做额外操作。完全符合要求。
+        // 完成了自动重新开始的核心: 在handleTimerComplete里重置时长并startCountdown。
+        // 另外极端场景如果倒计时结束瞬间播放声音由于context未解锁, 触发用户点击解锁后后续倒计时可发声, 完善解锁策略已经覆盖。
+        // 优雅迁移
+    })();
+</script>
+</body>
+</html>
