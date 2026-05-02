@@ -310,8 +310,8 @@
     <!-- 音量控制器 - 字体白色 -->
     <div class="volume-control">
         <span class="volume-label">🔊 Volume</span>
-        <input type="range" id="volumeSlider" class="volume-slider" min="0" max="1" step="0.01" value="0.75">
-        <span id="volumeValue" class="volume-value">75%</span>
+        <input type="range" id="volumeSlider" class="volume-slider" min="0" max="1" step="0.01" value="0.80">
+        <span id="volumeValue" class="volume-value">80%</span>
     </div>
     
     
@@ -341,7 +341,7 @@
         let endTimestamp = null;              // 预期结束的绝对时间戳 (毫秒)
         
         // 全局音量 (0~1)
-        let globalVolume = 0.75;
+        let globalVolume = 0.80;
         
         // 音频上下文 (懒加载 + 自动恢复)
         let audioCtx = null;
@@ -537,7 +537,8 @@
             const now = context.currentTime;
             // 主增益 (总音量受 globalVolume 控制)
             const masterGain = context.createGain();
-            masterGain.gain.value = Math.min(1.0, Math.max(0, globalVolume));
+            //masterGain.gain.value = Math.min(1.0, Math.max(0, globalVolume));
+            masterGain.gain.value = Math.min(1.5, Math.max(0, globalVolume * 1.5));
             masterGain.connect(context.destination);
             
             // 1) 叮 (高频 880Hz)
@@ -557,7 +558,7 @@
             const gain2 = context.createGain();
             osc2.type = 'sine';
             osc2.frequency.value = 540;
-            gain2.gain.value = 0.6;
+            gain2.gain.value = 0.75;
             osc2.connect(gain2);
             gain2.connect(masterGain);
             gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.85);
